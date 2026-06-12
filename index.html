@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>阿宇紙娃娃換裝間</title>
+  <style>
+    /* ── 全域基礎 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #fdf6ec;
+      color: #4a3728;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── 標題 ── */
+    header {
+      width: 100%;
+      padding: 1.2rem 1rem 0.8rem;
+      text-align: center;
+    }
+    header h1 {
+      font-size: clamp(1.3rem, 4vw, 2rem);
+      color: #c2785a;
+      letter-spacing: 0.05em;
+    }
+    header p {
+      font-size: 0.82rem;
+      color: #9e8070;
+      margin-top: 0.25rem;
+    }
+
+    /* ── 主版面：左右並排（桌機）/ 上下排列（手機） ── */
+    main {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1100px;
+      padding: 1rem 1.2rem 2rem;
+    }
+
+    /* ── 娃娃預覽區 ── */
+    #doll-wrapper {
+      flex: 0 0 auto;
+      /* 寬度最大 40vw，桌機較大時給 340px；高度依 1632:2592 比例自動計算 */
+      width: min(40vw, 340px);
+      /* padding-top 撐出 1632:2592 = 1:1.5882 的比例容器 */
+      padding-top: calc(min(40vw, 340px) * 1.5882);
+      position: relative;
+      border-radius: 1.2rem;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      background: #fff9f3;
+      flex-shrink: 0;
+    }
+
+    /* 圖層容器：絕對定位填滿比例框 */
+    #doll-stage {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* 所有圖層圖片：同一起點疊放、填滿容器 */
+    #doll-stage img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: fill; /* 素材已預對位，直接撐滿 */
+      display: block;
+    }
+
+    /* ── 控制面板 ── */
+    #control-panel {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* 分區卡片 */
+    .section-card {
+      background: #fff6ef;
+      border-radius: 1rem;
+      padding: 0.9rem 1.1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .section-card h2 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #c2785a;
+      margin-bottom: 0.65rem;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .section-card h2::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 1em;
+      background: #e8a882;
+      border-radius: 2px;
+    }
+
+    /* 選項按鈕群 */
+    .option-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+
+    /* 隱藏原生 input */
+    .option-group input { display: none; }
+
+    /* 通用選項標籤外觀 */
+    .option-label {
+      cursor: pointer;
+      padding: 0.38rem 0.85rem;
+      border-radius: 999px;
+      border: 2px solid #e8c9b4;
+      background: #fff;
+      color: #7a5a48;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .option-label:hover {
+      border-color: #c2785a;
+      background: #fdf0e8;
+    }
+    /* 選中狀態：checkbox 或 radio 被 check 時 */
+    input:checked + .option-label {
+      background: #e8a882;
+      border-color: #c2785a;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* ── 眼鏡 toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    /* toggle 開關樣式 */
+    .toggle-switch {
+      position: relative;
+      width: 44px; height: 24px;
+      cursor: pointer;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-track {
+      display: block;
+      width: 100%; height: 100%;
+      background: #e0cfc5;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-track { background: #e8a882; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      transition: left 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-thumb { left: 23px; }
+    .toggle-label-text {
+      font-size: 0.85rem;
+      color: #7a5a48;
+    }
+    #glasses-status {
+      font-size: 0.78rem;
+      color: #b09080;
+    }
+
+    /* ── 動作按鈕區 ── */
+    #action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      border: none;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f5b08a, #e87858);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(232,120,88,0.3);
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #c2785a;
+      border: 2px solid #e8c9b4;
+    }
+    .btn-download {
+      background: linear-gradient(135deg, #a8d8b0, #6ab87a);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(100,180,110,0.3);
+    }
+
+    /* ── RWD：手機改上下佈局 ── */
+    @media (max-width: 640px) {
+      main {
+        flex-direction: column;
+        align-items: center;
+        padding: 0.6rem 0.8rem 2rem;
+        gap: 1rem;
+      }
+      #doll-wrapper {
+        width: min(80vw, 260px);
+        padding-top: calc(min(80vw, 260px) * 1.5882);
+      }
+      #control-panel { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🧸 阿宇紙娃娃換裝間</h1>
+  <p>幫阿宇打扮一下吧 ✨</p>
+</header>
+
+<main>
+
+  <!-- ── 娃娃預覽區 ── -->
+  <div id="doll-wrapper">
+    <div id="doll-stage">
+      <!--
+        圖層由 JS 動態產生，順序：
+        base → outfit_chick_pants → outfit_casual → outfit_suit → outfit_pink_dress → hat → glasses
+      -->
+    </div>
+  </div>
+
+  <!-- ── 控制面板 ── -->
+  <div id="control-panel">
+
+    <!-- 服裝（可複選） -->
+    <div class="section-card">
+      <h2>服裝</h2>
+      <div class="option-group" id="outfit-group">
+        <!-- 由 JS 產生 -->
+      </div>
+    </div>
+
+    <!-- 頭飾（單選） -->
+    <div class="section-card">
+      <h2>頭飾</h2>
+      <div class="option-group" id="hat-group">
+        <!-- 由 JS 產生 -->
+      </div>
+    </div>
+
+    <!-- 眼鏡（toggle） -->
+    <div class="section-card">
+      <h2>眼鏡</h2>
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="glasses-toggle" checked />
+          <span class="toggle-track"></span>
+          <span class="toggle-thumb"></span>
+        </label>
+        <span class="toggle-label-text">眼鏡</span>
+        <span id="glasses-status">（戴著）</span>
+      </div>
+    </div>
+
+    <!-- 動作按鈕 -->
+    <div id="action-buttons">
+      <button class="btn btn-primary" id="btn-full">✨ 一鍵完全體（菜雞內褲＋蓬蓬裙＋草莓＋眼鏡）</button>
+      <button class="btn btn-secondary" id="btn-random">🎲 隨機換裝</button>
+      <button class="btn btn-download" id="btn-download">⬇️ 下載合成圖（PNG 原尺寸）</button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   部件設定檔
+   新增部件只需在這裡加一筆，其餘邏輯自動處理。
+   type: 'outfit' = 服裝（複選 checkbox）
+         'hat'    = 頭飾（單選 radio）
+         'base'   = 永遠顯示，不進控制面板
+         'glasses'= 單獨 toggle，不在這裡
+   zIndex 決定圖層疊放順序（數字大的在上面）
+════════════════════════════════════════════════════════ */
+const PARTS_CONFIG = [
+  { id: 'base',             file: 'assets/base.png',             name: '素體',       type: 'base',   zIndex: 10 },
+  { id: 'outfit_chick',     file: 'assets/outfit_chick_pants.png', name: '菜雞內褲', type: 'outfit', zIndex: 20 },
+  { id: 'outfit_casual',    file: 'assets/outfit_casual.png',    name: '休閒服',     type: 'outfit', zIndex: 21 },
+  { id: 'outfit_suit',      file: 'assets/outfit_suit.png',      name: '西裝',       type: 'outfit', zIndex: 22 },
+  { id: 'outfit_pink_dress',file: 'assets/outfit_pink_dress.png',name: '粉紅蓬蓬裙', type: 'outfit', zIndex: 23 },
+  { id: 'hat_strawberry',   file: 'assets/hat_strawberry.png',   name: '草莓',       type: 'hat',    zIndex: 30 },
+  { id: 'hat_watermelon',   file: 'assets/hat_watermelon.png',   name: '西瓜',       type: 'hat',    zIndex: 30 },
+  { id: 'hat_frog',         file: 'assets/hat_frog.png',         name: '青蛙',       type: 'hat',    zIndex: 30 },
+  { id: 'hat_dog',          file: 'assets/hat_dog.png',          name: '小狗',       type: 'hat',    zIndex: 30 },
+  { id: 'hat_crown',        file: 'assets/hat_crown.png',        name: '皇冠',       type: 'hat',    zIndex: 30 },
+  { id: 'hat_party',        file: 'assets/hat_party.png',        name: '派對帽',     type: 'hat',    zIndex: 30 },
+  { id: 'glasses',          file: 'assets/glasses.png',          name: '眼鏡',       type: 'glasses',zIndex: 40 },
+];
+
+/* ════════════════════════════════
+   應用狀態
+════════════════════════════════ */
+const state = {
+  outfits: new Set(['outfit_casual']), // 目前穿著的服裝 id 集合（預設穿休閒服）
+  hat: null,            // 目前頭飾的 id（null = 無）
+  glasses: true,        // 眼鏡是否顯示
+};
+
+/* ════════════════════════════════
+   初始化 DOM 圖層
+   每個 part 預先建立 <img> 插入 #doll-stage，
+   之後只需控制 display 即可，省去動態新增移除
+════════════════════════════════ */
+const stage = document.getElementById('doll-stage');
+const imgEls = {}; // id → <img> 元素
+
+// 依 zIndex 排序後依序插入，確保 CSS z-index 不需要再管疊放
+const sortedParts = [...PARTS_CONFIG].sort((a, b) => a.zIndex - b.zIndex);
+sortedParts.forEach(part => {
+  const img = document.createElement('img');
+  img.src = part.file;
+  img.alt = part.name;
+  img.style.zIndex = part.zIndex;
+  img.style.display = 'none'; // 預設隱藏
+  stage.appendChild(img);
+  imgEls[part.id] = img;
+});
+
+/* ════════════════════════════════
+   渲染娃娃（依 state 顯示/隱藏圖層）
+════════════════════════════════ */
+function renderDoll() {
+  PARTS_CONFIG.forEach(part => {
+    let visible = false;
+    if (part.type === 'base')    visible = true;
+    if (part.type === 'outfit')  visible = state.outfits.has(part.id);
+    if (part.type === 'hat')     visible = state.hat === part.id;
+    if (part.type === 'glasses') visible = state.glasses;
+    imgEls[part.id].style.display = visible ? 'block' : 'none';
+  });
+
+  // 眼鏡狀態文字
+  document.getElementById('glasses-status').textContent = state.glasses ? '（戴著）' : '（脫下）';
+}
+
+/* ════════════════════════════════
+   建立控制面板 UI
+════════════════════════════════ */
+
+// 服裝 checkbox
+const outfitGroup = document.getElementById('outfit-group');
+PARTS_CONFIG.filter(p => p.type === 'outfit').forEach(part => {
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.id = 'ctrl-' + part.id;
+  input.name = part.id;
+
+  const label = document.createElement('label');
+  label.htmlFor = 'ctrl-' + part.id;
+  label.className = 'option-label';
+  label.textContent = part.name;
+
+  input.addEventListener('change', () => {
+    if (input.checked) state.outfits.add(part.id);
+    else               state.outfits.delete(part.id);
+    renderDoll();
+  });
+
+  outfitGroup.appendChild(input);
+  outfitGroup.appendChild(label);
+});
+
+// 頭飾 radio（含「無」選項）
+const hatGroup = document.getElementById('hat-group');
+
+// 「無」選項
+const noneInput = document.createElement('input');
+noneInput.type = 'radio';
+noneInput.id = 'hat-none';
+noneInput.name = 'hat';
+noneInput.value = '';
+noneInput.checked = true; // 預設無頭飾
+
+const noneLabel = document.createElement('label');
+noneLabel.htmlFor = 'hat-none';
+noneLabel.className = 'option-label';
+noneLabel.textContent = '無';
+
+noneInput.addEventListener('change', () => {
+  state.hat = null;
+  renderDoll();
+});
+
+hatGroup.appendChild(noneInput);
+hatGroup.appendChild(noneLabel);
+
+// 各帽子
+PARTS_CONFIG.filter(p => p.type === 'hat').forEach(part => {
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.id = 'ctrl-' + part.id;
+  input.name = 'hat';
+  input.value = part.id;
+
+  const label = document.createElement('label');
+  label.htmlFor = 'ctrl-' + part.id;
+  label.className = 'option-label';
+  label.textContent = part.name;
+
+  input.addEventListener('change', () => {
+    state.hat = part.id;
+    renderDoll();
+  });
+
+  hatGroup.appendChild(input);
+  hatGroup.appendChild(label);
+});
+
+// 眼鏡 toggle
+document.getElementById('glasses-toggle').addEventListener('change', e => {
+  state.glasses = e.target.checked;
+  renderDoll();
+});
+
+/* ════════════════════════════════
+   一鍵完全體：菜雞內褲＋粉紅蓬蓬裙＋草莓＋眼鏡
+════════════════════════════════ */
+document.getElementById('btn-full').addEventListener('click', () => {
+  // 清除所有服裝，只套完全體組合
+  state.outfits.clear();
+  state.outfits.add('outfit_chick');
+  state.outfits.add('outfit_pink_dress');
+  state.hat = 'hat_strawberry';
+  state.glasses = true;
+  syncControlsToState();
+  renderDoll();
+});
+
+/* ════════════════════════════════
+   隨機換裝
+════════════════════════════════ */
+document.getElementById('btn-random').addEventListener('click', () => {
+  const outfitParts = PARTS_CONFIG.filter(p => p.type === 'outfit');
+  const hatParts    = PARTS_CONFIG.filter(p => p.type === 'hat');
+
+  // 隨機服裝：每件獨立 50% 機率穿（至少穿一件）
+  state.outfits.clear();
+  let outfitPicked = false;
+  outfitParts.forEach(p => {
+    if (Math.random() < 0.5) {
+      state.outfits.add(p.id);
+      outfitPicked = true;
+    }
+  });
+  // 保底至少一件
+  if (!outfitPicked) {
+    const fallback = outfitParts[Math.floor(Math.random() * outfitParts.length)];
+    state.outfits.add(fallback.id);
+  }
+
+  // 隨機頭飾：包含「無」選項（共 hatParts.length + 1 個選項）
+  const hatRoll = Math.floor(Math.random() * (hatParts.length + 1));
+  state.hat = hatRoll < hatParts.length ? hatParts[hatRoll].id : null;
+
+  // 隨機眼鏡
+  state.glasses = Math.random() < 0.7; // 70% 戴眼鏡（阿宇標配 XD）
+
+  syncControlsToState();
+  renderDoll();
+});
+
+/* ════════════════════════════════
+   將 state 同步回 UI 控制元件的 checked 狀態
+   （一鍵完全體 / 隨機換裝後呼叫，讓按鈕狀態對應）
+════════════════════════════════ */
+function syncControlsToState() {
+  // 服裝 checkboxes
+  PARTS_CONFIG.filter(p => p.type === 'outfit').forEach(part => {
+    const el = document.getElementById('ctrl-' + part.id);
+    if (el) el.checked = state.outfits.has(part.id);
+  });
+
+  // 頭飾 radios
+  const noneRadio = document.getElementById('hat-none');
+  if (noneRadio) noneRadio.checked = (state.hat === null);
+  PARTS_CONFIG.filter(p => p.type === 'hat').forEach(part => {
+    const el = document.getElementById('ctrl-' + part.id);
+    if (el) el.checked = (state.hat === part.id);
+  });
+
+  // 眼鏡 toggle
+  const glassesToggle = document.getElementById('glasses-toggle');
+  if (glassesToggle) glassesToggle.checked = state.glasses;
+}
+
+/* ════════════════════════════════
+   下載合成圖
+   用 canvas 以原始 1632×2592 解析度合成目前可見圖層
+════════════════════════════════ */
+document.getElementById('btn-download').addEventListener('click', async () => {
+  const ORIG_W = 816;
+  const ORIG_H = 1296;
+
+  // 建立離屏 canvas
+  const canvas = document.createElement('canvas');
+  canvas.width  = ORIG_W;
+  canvas.height = ORIG_H;
+  const ctx = canvas.getContext('2d');
+
+  // 依 zIndex 順序取出目前顯示中的圖層，逐一畫到 canvas
+  const visibleParts = sortedParts.filter(p => {
+    const el = imgEls[p.id];
+    return el && el.style.display !== 'none';
+  });
+
+  // 等所有圖片載入完畢（通常已快取，以防萬一仍 await）
+  await Promise.all(visibleParts.map(p => new Promise(resolve => {
+    const el = imgEls[p.id];
+    if (el.complete) resolve();
+    else el.onload = resolve;
+  })));
+
+  visibleParts.forEach(p => {
+    ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
+  });
+
+  // 觸發下載（file:// 直接開啟時 canvas 會被瀏覽器標為 tainted，給友善提示）
+  try {
+    const link = document.createElement('a');
+    link.download = 'tsunu_dressup.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    alert('本機直接開啟檔案時瀏覽器不允許下載合成圖，請改用網頁版（GitHub Pages），或先截圖保存 🙏');
+  }
+});
+
+/* ════════════════════════════════
+   初始渲染（先把 UI 控制元件同步成預設穿搭）
+════════════════════════════════ */
+syncControlsToState();
+renderDoll();
+</script>
+
+</body>
+</html>
