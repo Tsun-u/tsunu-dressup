@@ -347,6 +347,8 @@ sortedParts.forEach(part => {
   img.alt = part.name;
   img.style.zIndex = part.zIndex;
   img.style.display = 'none'; // 預設隱藏
+  // 素體縮小 1%，避免穿衣後素體邊緣從服裝外側露出細邊
+  if (part.type === 'base') img.style.transform = 'scale(0.99)';
   stage.appendChild(img);
   imgEls[part.id] = img;
 });
@@ -546,7 +548,12 @@ document.getElementById('btn-download').addEventListener('click', async () => {
   })));
 
   visibleParts.forEach(p => {
-    ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
+    if (p.type === 'base') {
+      // 與預覽一致：素體縮 1% 置中，避免邊緣露出
+      ctx.drawImage(imgEls[p.id], ORIG_W * 0.005, ORIG_H * 0.005, ORIG_W * 0.99, ORIG_H * 0.99);
+    } else {
+      ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
+    }
   });
 
   // 觸發下載（file:// 直接開啟時 canvas 會被瀏覽器標為 tainted，給友善提示）
