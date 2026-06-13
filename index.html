@@ -403,8 +403,7 @@ sortedParts.forEach(part => {
   img.alt = part.name;
   img.style.zIndex = part.zIndex;
   img.style.display = 'none'; // 預設隱藏
-  // 素體三層縮小 1%，避免服裝縫隙露出素體邊緣
-  if (part.type === 'base') img.style.transform = 'scale(0.99)';
+  // v2 衣物含肢體、覆蓋範圍充足，素體不再需要縮小
   stage.appendChild(img);
   imgEls[part.id] = img;
 });
@@ -632,7 +631,7 @@ function syncControlsToState() {
 /* ════════════════════════════════
    下載合成圖
    用 canvas 以原始解析度合成目前可見圖層
-   素體三層各自 scale(0.99) 縮放置中，其餘 0,0 原尺寸
+   所有圖層 0,0 原尺寸繪製
 ════════════════════════════════ */
 document.getElementById('btn-download').addEventListener('click', async () => {
   const ORIG_W = 816;
@@ -658,12 +657,7 @@ document.getElementById('btn-download').addEventListener('click', async () => {
   })));
 
   visibleParts.forEach(p => {
-    if (p.type === 'base') {
-      // 素體三層：與預覽一致，縮 1% 置中
-      ctx.drawImage(imgEls[p.id], ORIG_W * 0.005, ORIG_H * 0.005, ORIG_W * 0.99, ORIG_H * 0.99);
-    } else {
-      ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
-    }
+    ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
   });
 
   // 觸發下載（file:// 直接開啟時 canvas 可能被標為 tainted，給友善提示）
