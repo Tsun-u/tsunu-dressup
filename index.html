@@ -184,6 +184,13 @@
       color: #b09080;
     }
 
+    /* ── 貼身件 toggle row ── */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
     /* ── 動作按鈕區 ── */
     #action-buttons {
       display: flex;
@@ -248,8 +255,10 @@
   <div id="doll-wrapper">
     <div id="doll-stage">
       <!--
-        圖層由 JS 動態產生，順序：
-        base → outfit_chick_pants → outfit_casual → outfit_suit → outfit_pink_dress → hat → glasses
+        圖層由 JS 動態產生，順序（依 zIndex 低→高）：
+        base_head / base_upper / base_lower
+        → outfit_chick_pants → outfit_casual / outfit_suit / outfit_pink_dress
+        → hat → glasses
       -->
     </div>
   </div>
@@ -257,10 +266,18 @@
   <!-- ── 控制面板 ── -->
   <div id="control-panel">
 
-    <!-- 服裝（可複選） -->
+    <!-- 套裝（radio 單選） -->
     <div class="section-card">
-      <h2>服裝</h2>
+      <h2>套裝</h2>
       <div class="option-group" id="outfit-group">
+        <!-- 由 JS 產生 -->
+      </div>
+    </div>
+
+    <!-- 貼身件（checkbox） -->
+    <div class="section-card">
+      <h2>貼身</h2>
+      <div class="option-group" id="bodywear-group">
         <!-- 由 JS 產生 -->
       </div>
     </div>
@@ -289,7 +306,7 @@
 
     <!-- 動作按鈕 -->
     <div id="action-buttons">
-      <button class="btn btn-primary" id="btn-full">✨ 一鍵完全體（菜雞內褲＋蓬蓬裙＋草莓＋眼鏡）</button>
+      <button class="btn btn-primary" id="btn-full">✨ 一鍵完全體（蓬蓬裙＋菜雞內褲＋草莓＋眼鏡）</button>
       <button class="btn btn-secondary" id="btn-random">🎲 隨機換裝</button>
       <button class="btn btn-download" id="btn-download">⬇️ 下載合成圖（PNG 原尺寸）</button>
     </div>
@@ -299,47 +316,86 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   部件設定檔
+   部件設定檔（v2）
    新增部件只需在這裡加一筆，其餘邏輯自動處理。
-   type: 'outfit' = 服裝（複選 checkbox）
-         'hat'    = 頭飾（單選 radio）
-         'base'   = 永遠顯示，不進控制面板
-         'glasses'= 單獨 toggle，不在這裡
+
+   type:
+     'base'     = 素體（永遠顯示，不進控制面板）
+     'outfit'   = 套裝（radio 單選，category='套裝'）
+     'bodywear' = 貼身件（checkbox 複選，category='貼身'）
+     'hat'      = 頭飾（radio 單選）
+     'glasses'  = 眼鏡 toggle，不在此陣列
+
+   hides: 套裝會遮住哪些素體部位
+     'upper' → base_upper 隱藏
+     'lower' → base_lower 隱藏
+
    zIndex 決定圖層疊放順序（數字大的在上面）
 ════════════════════════════════════════════════════════ */
 const PARTS_CONFIG = [
-  { id: 'base',             file: 'assets/base.png',             name: '素體',       type: 'base',   zIndex: 10 },
-  { id: 'outfit_chick',     file: 'assets/outfit_chick_pants.png', name: '菜雞內褲', type: 'outfit', zIndex: 20 },
-  { id: 'outfit_casual',    file: 'assets/outfit_casual.png',    name: '休閒服',     type: 'outfit', zIndex: 21 },
-  { id: 'outfit_suit',      file: 'assets/outfit_suit.png',      name: '西裝',       type: 'outfit', zIndex: 22 },
-  { id: 'outfit_pink_dress',file: 'assets/outfit_pink_dress.png',name: '粉紅蓬蓬裙', type: 'outfit', zIndex: 23 },
-  { id: 'hat_strawberry',   file: 'assets/hat_strawberry.png',   name: '草莓',       type: 'hat',    zIndex: 30 },
-  { id: 'hat_watermelon',   file: 'assets/hat_watermelon.png',   name: '西瓜',       type: 'hat',    zIndex: 30 },
-  { id: 'hat_frog',         file: 'assets/hat_frog.png',         name: '青蛙',       type: 'hat',    zIndex: 30 },
-  { id: 'hat_dog',          file: 'assets/hat_dog.png',          name: '小狗',       type: 'hat',    zIndex: 30 },
-  { id: 'hat_crown',        file: 'assets/hat_crown.png',        name: '皇冠',       type: 'hat',    zIndex: 30 },
-  { id: 'hat_party',        file: 'assets/hat_party.png',        name: '派對帽',     type: 'hat',    zIndex: 30 },
-  { id: 'glasses',          file: 'assets/glasses.png',          name: '眼鏡',       type: 'glasses',zIndex: 40 },
+  /* ── 素體三層 ── */
+  { id: 'base_head',          file: 'assets/v2/base_head.png',          name: '頭',         type: 'base',     zIndex: 10 },
+  { id: 'base_upper',         file: 'assets/v2/base_upper.png',         name: '上半身',     type: 'base',     zIndex: 11 },
+  { id: 'base_lower',         file: 'assets/v2/base_lower.png',         name: '下半身',     type: 'base',     zIndex: 12 },
+
+  /* ── 貼身件（checkbox，不 hides 素體） ── */
+  { id: 'outfit_chick_pants', file: 'assets/outfit_chick_pants.png',    name: '菜雞內褲',   type: 'bodywear', zIndex: 20, hides: [] },
+
+  /* ── 套裝（radio 單選，hides 對應素體部位） ── */
+  { id: 'outfit_suit',        file: 'assets/outfit_suit_v2.png',        name: '西裝',       type: 'outfit',   zIndex: 21, hides: ['upper', 'lower'] },
+  { id: 'outfit_casual',      file: 'assets/outfit_casual_v2.png',      name: '休閒服',     type: 'outfit',   zIndex: 22, hides: ['upper', 'lower'] },
+  { id: 'outfit_pink_dress',  file: 'assets/outfit_pink_dress_v2.png',  name: '粉紅蓬蓬裙', type: 'outfit',   zIndex: 23, hides: ['upper'] },
+
+  /* ── 頭飾（radio 單選） ── */
+  { id: 'hat_strawberry',     file: 'assets/hat_strawberry.png',        name: '草莓',       type: 'hat',      zIndex: 30 },
+  { id: 'hat_watermelon',     file: 'assets/hat_watermelon.png',        name: '西瓜',       type: 'hat',      zIndex: 30 },
+  { id: 'hat_frog',           file: 'assets/hat_frog.png',              name: '青蛙',       type: 'hat',      zIndex: 30 },
+  { id: 'hat_dog',            file: 'assets/hat_dog.png',               name: '小狗',       type: 'hat',      zIndex: 30 },
+  { id: 'hat_crown',          file: 'assets/hat_crown.png',             name: '皇冠',       type: 'hat',      zIndex: 30 },
+  { id: 'hat_party',          file: 'assets/hat_party.png',             name: '派對帽',     type: 'hat',      zIndex: 30 },
+
+  /* ── 眼鏡（獨立 toggle，不在陣列內渲染，但需要 zIndex 參考） ── */
+  { id: 'glasses',            file: 'assets/glasses.png',               name: '眼鏡',       type: 'glasses',  zIndex: 40 },
 ];
 
 /* ════════════════════════════════
    應用狀態
 ════════════════════════════════ */
 const state = {
-  outfits: new Set(['outfit_casual']), // 目前穿著的服裝 id 集合（預設穿休閒服）
-  hat: null,            // 目前頭飾的 id（null = 無）
-  glasses: true,        // 眼鏡是否顯示
+  outfit:   'outfit_casual', // 目前套裝 id（null = 無）；預設穿休閒服
+  bodywear: new Set(),        // 目前貼身件 id 集合
+  hat:      null,             // 目前頭飾 id（null = 無）
+  glasses:  true,             // 眼鏡是否顯示
 };
 
 /* ════════════════════════════════
+   工具：計算目前應隱藏的素體部位
+   掃描目前穿著的套裝 + 貼身件，
+   將所有 hides 陣列取聯集。
+════════════════════════════════ */
+function getHiddenBases() {
+  const hidden = new Set();
+  // 套裝 hides
+  if (state.outfit) {
+    const part = PARTS_CONFIG.find(p => p.id === state.outfit);
+    if (part && part.hides) part.hides.forEach(h => hidden.add(h));
+  }
+  // 貼身件 hides
+  state.bodywear.forEach(bwId => {
+    const part = PARTS_CONFIG.find(p => p.id === bwId);
+    if (part && part.hides) part.hides.forEach(h => hidden.add(h));
+  });
+  return hidden;
+}
+
+/* ════════════════════════════════
    初始化 DOM 圖層
-   每個 part 預先建立 <img> 插入 #doll-stage，
-   之後只需控制 display 即可，省去動態新增移除
+   每個 part 預先建立 <img> 插入 #doll-stage
 ════════════════════════════════ */
 const stage = document.getElementById('doll-stage');
 const imgEls = {}; // id → <img> 元素
 
-// 依 zIndex 排序後依序插入，確保 CSS z-index 不需要再管疊放
+// 依 zIndex 排序後依序插入，確保堆疊順序正確
 const sortedParts = [...PARTS_CONFIG].sort((a, b) => a.zIndex - b.zIndex);
 sortedParts.forEach(part => {
   const img = document.createElement('img');
@@ -347,7 +403,7 @@ sortedParts.forEach(part => {
   img.alt = part.name;
   img.style.zIndex = part.zIndex;
   img.style.display = 'none'; // 預設隱藏
-  // 素體縮小 1%，避免穿衣後素體邊緣從服裝外側露出細邊
+  // 素體三層縮小 1%，避免服裝縫隙露出素體邊緣
   if (part.type === 'base') img.style.transform = 'scale(0.99)';
   stage.appendChild(img);
   imgEls[part.id] = img;
@@ -357,12 +413,26 @@ sortedParts.forEach(part => {
    渲染娃娃（依 state 顯示/隱藏圖層）
 ════════════════════════════════ */
 function renderDoll() {
+  const hiddenBases = getHiddenBases();
+
   PARTS_CONFIG.forEach(part => {
     let visible = false;
-    if (part.type === 'base')    visible = true;
-    if (part.type === 'outfit')  visible = state.outfits.has(part.id);
-    if (part.type === 'hat')     visible = state.hat === part.id;
-    if (part.type === 'glasses') visible = state.glasses;
+
+    if (part.type === 'base') {
+      // base_head 永遠顯示
+      if (part.id === 'base_head') {
+        visible = true;
+      } else if (part.id === 'base_upper') {
+        visible = !hiddenBases.has('upper');
+      } else if (part.id === 'base_lower') {
+        visible = !hiddenBases.has('lower');
+      }
+    }
+    if (part.type === 'outfit')   visible = (state.outfit === part.id);
+    if (part.type === 'bodywear') visible = state.bodywear.has(part.id);
+    if (part.type === 'hat')      visible = (state.hat === part.id);
+    if (part.type === 'glasses')  visible = state.glasses;
+
     imgEls[part.id].style.display = visible ? 'block' : 'none';
   });
 
@@ -374,9 +444,47 @@ function renderDoll() {
    建立控制面板 UI
 ════════════════════════════════ */
 
-// 服裝 checkbox
+/* ── 套裝 radio（含「無」選項） ── */
 const outfitGroup = document.getElementById('outfit-group');
+
+// 「無」選項
+(function() {
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.id = 'outfit-none';
+  input.name = 'outfit';
+  input.value = '';
+  const label = document.createElement('label');
+  label.htmlFor = 'outfit-none';
+  label.className = 'option-label';
+  label.textContent = '無';
+  input.addEventListener('change', () => { state.outfit = null; renderDoll(); });
+  outfitGroup.appendChild(input);
+  outfitGroup.appendChild(label);
+})();
+
+// 各套裝
 PARTS_CONFIG.filter(p => p.type === 'outfit').forEach(part => {
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.id = 'ctrl-' + part.id;
+  input.name = 'outfit';
+  input.value = part.id;
+
+  const label = document.createElement('label');
+  label.htmlFor = 'ctrl-' + part.id;
+  label.className = 'option-label';
+  label.textContent = part.name;
+
+  input.addEventListener('change', () => { state.outfit = part.id; renderDoll(); });
+
+  outfitGroup.appendChild(input);
+  outfitGroup.appendChild(label);
+});
+
+/* ── 貼身件 checkbox ── */
+const bodywearGroup = document.getElementById('bodywear-group');
+PARTS_CONFIG.filter(p => p.type === 'bodywear').forEach(part => {
   const input = document.createElement('input');
   input.type = 'checkbox';
   input.id = 'ctrl-' + part.id;
@@ -388,40 +496,36 @@ PARTS_CONFIG.filter(p => p.type === 'outfit').forEach(part => {
   label.textContent = part.name;
 
   input.addEventListener('change', () => {
-    if (input.checked) state.outfits.add(part.id);
-    else               state.outfits.delete(part.id);
+    if (input.checked) state.bodywear.add(part.id);
+    else               state.bodywear.delete(part.id);
     renderDoll();
   });
 
-  outfitGroup.appendChild(input);
-  outfitGroup.appendChild(label);
+  bodywearGroup.appendChild(input);
+  bodywearGroup.appendChild(label);
 });
 
-// 頭飾 radio（含「無」選項）
+/* ── 頭飾 radio（含「無」選項） ── */
 const hatGroup = document.getElementById('hat-group');
 
 // 「無」選項
-const noneInput = document.createElement('input');
-noneInput.type = 'radio';
-noneInput.id = 'hat-none';
-noneInput.name = 'hat';
-noneInput.value = '';
-noneInput.checked = true; // 預設無頭飾
+(function() {
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.id = 'hat-none';
+  input.name = 'hat';
+  input.value = '';
+  input.checked = true; // 預設無頭飾
+  const label = document.createElement('label');
+  label.htmlFor = 'hat-none';
+  label.className = 'option-label';
+  label.textContent = '無';
+  input.addEventListener('change', () => { state.hat = null; renderDoll(); });
+  hatGroup.appendChild(input);
+  hatGroup.appendChild(label);
+})();
 
-const noneLabel = document.createElement('label');
-noneLabel.htmlFor = 'hat-none';
-noneLabel.className = 'option-label';
-noneLabel.textContent = '無';
-
-noneInput.addEventListener('change', () => {
-  state.hat = null;
-  renderDoll();
-});
-
-hatGroup.appendChild(noneInput);
-hatGroup.appendChild(noneLabel);
-
-// 各帽子
+// 各頭飾
 PARTS_CONFIG.filter(p => p.type === 'hat').forEach(part => {
   const input = document.createElement('input');
   input.type = 'radio';
@@ -434,30 +538,27 @@ PARTS_CONFIG.filter(p => p.type === 'hat').forEach(part => {
   label.className = 'option-label';
   label.textContent = part.name;
 
-  input.addEventListener('change', () => {
-    state.hat = part.id;
-    renderDoll();
-  });
+  input.addEventListener('change', () => { state.hat = part.id; renderDoll(); });
 
   hatGroup.appendChild(input);
   hatGroup.appendChild(label);
 });
 
-// 眼鏡 toggle
+/* ── 眼鏡 toggle ── */
 document.getElementById('glasses-toggle').addEventListener('change', e => {
   state.glasses = e.target.checked;
   renderDoll();
 });
 
 /* ════════════════════════════════
-   一鍵完全體：菜雞內褲＋粉紅蓬蓬裙＋草莓＋眼鏡
+   一鍵完全體
+   套裝 = 粉紅蓬蓬裙 + 菜雞內褲 on + 草莓 + 眼鏡
 ════════════════════════════════ */
 document.getElementById('btn-full').addEventListener('click', () => {
-  // 清除所有服裝，只套完全體組合
-  state.outfits.clear();
-  state.outfits.add('outfit_chick');
-  state.outfits.add('outfit_pink_dress');
-  state.hat = 'hat_strawberry';
+  state.outfit  = 'outfit_pink_dress';
+  state.bodywear.clear();
+  state.bodywear.add('outfit_chick_pants');
+  state.hat     = 'hat_strawberry';
   state.glasses = true;
   syncControlsToState();
   renderDoll();
@@ -465,32 +566,32 @@ document.getElementById('btn-full').addEventListener('click', () => {
 
 /* ════════════════════════════════
    隨機換裝
+   套裝：四選一（無 / 西裝 / 休閒服 / 粉紅蓬蓬裙）均等
+   內褲：50% 穿
+   頭飾：含無均等隨機
+   眼鏡：70%
 ════════════════════════════════ */
 document.getElementById('btn-random').addEventListener('click', () => {
   const outfitParts = PARTS_CONFIG.filter(p => p.type === 'outfit');
   const hatParts    = PARTS_CONFIG.filter(p => p.type === 'hat');
+  const bwParts     = PARTS_CONFIG.filter(p => p.type === 'bodywear');
 
-  // 隨機服裝：每件獨立 50% 機率穿（至少穿一件）
-  state.outfits.clear();
-  let outfitPicked = false;
-  outfitParts.forEach(p => {
-    if (Math.random() < 0.5) {
-      state.outfits.add(p.id);
-      outfitPicked = true;
-    }
+  // 套裝四選一（含無）
+  const outfitRoll = Math.floor(Math.random() * (outfitParts.length + 1));
+  state.outfit = outfitRoll < outfitParts.length ? outfitParts[outfitRoll].id : null;
+
+  // 貼身件各自 50%
+  state.bodywear.clear();
+  bwParts.forEach(p => {
+    if (Math.random() < 0.5) state.bodywear.add(p.id);
   });
-  // 保底至少一件
-  if (!outfitPicked) {
-    const fallback = outfitParts[Math.floor(Math.random() * outfitParts.length)];
-    state.outfits.add(fallback.id);
-  }
 
-  // 隨機頭飾：包含「無」選項（共 hatParts.length + 1 個選項）
+  // 頭飾含無均等
   const hatRoll = Math.floor(Math.random() * (hatParts.length + 1));
   state.hat = hatRoll < hatParts.length ? hatParts[hatRoll].id : null;
 
-  // 隨機眼鏡
-  state.glasses = Math.random() < 0.7; // 70% 戴眼鏡（阿宇標配 XD）
+  // 眼鏡 70%（阿宇標配 XD）
+  state.glasses = Math.random() < 0.7;
 
   syncControlsToState();
   renderDoll();
@@ -498,18 +599,26 @@ document.getElementById('btn-random').addEventListener('click', () => {
 
 /* ════════════════════════════════
    將 state 同步回 UI 控制元件的 checked 狀態
-   （一鍵完全體 / 隨機換裝後呼叫，讓按鈕狀態對應）
+   （一鍵完全體 / 隨機換裝後呼叫）
 ════════════════════════════════ */
 function syncControlsToState() {
-  // 服裝 checkboxes
+  // 套裝 radios
+  const outfitNone = document.getElementById('outfit-none');
+  if (outfitNone) outfitNone.checked = (state.outfit === null);
   PARTS_CONFIG.filter(p => p.type === 'outfit').forEach(part => {
     const el = document.getElementById('ctrl-' + part.id);
-    if (el) el.checked = state.outfits.has(part.id);
+    if (el) el.checked = (state.outfit === part.id);
+  });
+
+  // 貼身件 checkboxes
+  PARTS_CONFIG.filter(p => p.type === 'bodywear').forEach(part => {
+    const el = document.getElementById('ctrl-' + part.id);
+    if (el) el.checked = state.bodywear.has(part.id);
   });
 
   // 頭飾 radios
-  const noneRadio = document.getElementById('hat-none');
-  if (noneRadio) noneRadio.checked = (state.hat === null);
+  const hatNone = document.getElementById('hat-none');
+  if (hatNone) hatNone.checked = (state.hat === null);
   PARTS_CONFIG.filter(p => p.type === 'hat').forEach(part => {
     const el = document.getElementById('ctrl-' + part.id);
     if (el) el.checked = (state.hat === part.id);
@@ -522,7 +631,8 @@ function syncControlsToState() {
 
 /* ════════════════════════════════
    下載合成圖
-   用 canvas 以原始 1632×2592 解析度合成目前可見圖層
+   用 canvas 以原始解析度合成目前可見圖層
+   素體三層各自 scale(0.99) 縮放置中，其餘 0,0 原尺寸
 ════════════════════════════════ */
 document.getElementById('btn-download').addEventListener('click', async () => {
   const ORIG_W = 816;
@@ -534,7 +644,7 @@ document.getElementById('btn-download').addEventListener('click', async () => {
   canvas.height = ORIG_H;
   const ctx = canvas.getContext('2d');
 
-  // 依 zIndex 順序取出目前顯示中的圖層，逐一畫到 canvas
+  // 依 zIndex 順序取出目前顯示中的圖層
   const visibleParts = sortedParts.filter(p => {
     const el = imgEls[p.id];
     return el && el.style.display !== 'none';
@@ -549,14 +659,14 @@ document.getElementById('btn-download').addEventListener('click', async () => {
 
   visibleParts.forEach(p => {
     if (p.type === 'base') {
-      // 與預覽一致：素體縮 1% 置中，避免邊緣露出
+      // 素體三層：與預覽一致，縮 1% 置中
       ctx.drawImage(imgEls[p.id], ORIG_W * 0.005, ORIG_H * 0.005, ORIG_W * 0.99, ORIG_H * 0.99);
     } else {
       ctx.drawImage(imgEls[p.id], 0, 0, ORIG_W, ORIG_H);
     }
   });
 
-  // 觸發下載（file:// 直接開啟時 canvas 會被瀏覽器標為 tainted，給友善提示）
+  // 觸發下載（file:// 直接開啟時 canvas 可能被標為 tainted，給友善提示）
   try {
     const link = document.createElement('a');
     link.download = 'tsunu_dressup.png';
