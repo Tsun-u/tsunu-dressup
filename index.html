@@ -333,8 +333,8 @@ const PARTS_CONFIG = [
   { id: 'outfit_chick_pants',   file: 'assets/outfit_chick_pants.png',    name: '菜雞內褲',   type: 'bodywear', zIndex: 15, hides: [] },
 
   /* ── 套裝（radio 單選，hides body） ── */
-  { id: 'outfit_suit',          file: 'assets/outfit_suit_v3.png',        name: '西裝',       type: 'outfit',   zIndex: 21, hides: ['body'] },
-  { id: 'outfit_casual',        file: 'assets/outfit_casual_v3.png',      name: '休閒服',     type: 'outfit',   zIndex: 22, hides: ['body'] },
+  { id: 'outfit_suit',          file: 'assets/outfit_suit_v3.png',        name: '西裝',       type: 'outfit',   zIndex: 21, hides: ['body', 'bodywear'] },
+  { id: 'outfit_casual',        file: 'assets/outfit_casual_v3.png',      name: '休閒服',     type: 'outfit',   zIndex: 22, hides: ['body', 'bodywear'] },
   { id: 'outfit_pink_dress',    file: 'assets/outfit_pink_dress_v3.png',  name: '粉紅蓬蓬裙', type: 'outfit',   zIndex: 23, hides: ['body'] },
 
   /* ── 頭飾（radio 單選） ── */
@@ -416,7 +416,7 @@ function renderDoll() {
       }
     }
     if (part.type === 'outfit')   visible = (state.outfit === part.id);
-    if (part.type === 'bodywear') visible = state.bodywear.has(part.id);
+    if (part.type === 'bodywear') visible = state.bodywear.has(part.id) && !hiddenBases.has('bodywear');
     if (part.type === 'hat')      visible = (state.hat === part.id);
     if (part.type === 'glasses')  visible = state.glasses;
 
