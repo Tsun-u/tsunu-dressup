@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>阿宇紙娃娃換裝間</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#cdbcec" />
   <style>
     /* ── 全域基礎 ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -311,7 +315,7 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   部件設定檔（v3 — 童童手工裁切版）
+   部件設定檔（v3 — 手工裁切版）
 
    type:
      'base'     = 素體（永遠顯示或被 hides，不進控制面板）
@@ -396,7 +400,7 @@ sortedParts.forEach(part => {
   img.alt = part.name;
   img.style.zIndex = part.zIndex;
   img.style.display = 'none'; // 預設隱藏
-  // v3 童童手工裁切，head 在 outfit 上面蓋住接合處
+  // v3 手工裁切版，head 在 outfit 上面蓋住接合處
   stage.appendChild(img);
   imgEls[part.id] = img;
 });
